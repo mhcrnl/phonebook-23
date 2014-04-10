@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+require 'json'
+require 'optparse'
+require 'test/unit'
+
+
+class Phonebook
+
+	def create_phonebook(name)
+		begin
+			File.read("#{name}")
+			raise "Phonebook already created"
+		rescue Errno::ENOENT
+			File.open("#{name}", 'w') do |file|
+				file.write({}.to_json)
+			end
+		end
+	end
+
+	def lookup(file, name, strict = nil)
+		raise 'Invalid file' if !file
+		raise 'Invalid name' if !name
+		hash = file_hash(file)
+		matches = hash.select do |nam, number|
+			if strict
+				name =~ /#{nam}/i
+			else
+				nam =~ /#{name}/i
+			end
+		end
+		p matches if !strict
+		matches
+	end
+
+	def add_contact(file, name, number)
+		raise "Invalid file" if !file
+		raise "Invalid name" if !name
+		raise "Invalid number" if !number
+		if lookup(file, name, true).empty?
+			hash = file_hash(file)
+			hash[name] = number
+			File.open(file, 'w') do |f|
+				f.write(hash.to_json)
+			end
+		else
+			raise "Duplicate contact"
+		end
+	end
+
+	def edit_contact(file, name, new_number)
+		remove_contact(file, name)
+		add_contact(file, name, new_number)
+	end
+
+	def file_hash(file)
+		JSON.parse(File.read(file))
+	end
+
+	def remove_contact(file, name)
+		@matches = lookup(file, name, true)
+		if @matches.empty?
+			raise "Contact doesnt exist"
+		else
+			hash = file_hash(file)
+			hash.delete(name)
+			File.open(file, 'w') do |f|
+				f.write(hash.to_json)
+			end
+		end
+	end
+
+	def reverse_lookup(file, number)
+		hash = file_hash(file)
+		matches = hash.select do |n, num|
+			num =~ /#{number}/
+		end
+		p matches if !strict
+		matches
+	end
+
+	def option_parser
+	end
+
+end
+
+parser = OptionParser.new
+@pb = Phonebook.new
+params = {}
+parser.on("-b") { params[:file] }
+argv = parser.parse(ARGV)
+
+params[:file] = argv.last
+
+case argv.first
+when "create"
+	@pb.create_phonebook(argv[1])
+when "add"
+	@pb.add_contact(params[:file], argv[1], argv[2])
+when "remove"
+	@pb.remove_contact(params[:file], argv[1])
+when "change"
+	@pb.edit_contact(params[:file], argv[1], argv[2])
+when "lookup"
+	@pb.lookup(params[:file], argv[1])
+when "reverse-lookup"
+	@pb.reverse_lookup(params[:file], argv[1])
+else
+	"Bad command"
+end
