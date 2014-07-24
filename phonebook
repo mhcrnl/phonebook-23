@@ -77,13 +77,8 @@ class Phonebook
     p matches if !strict
     matches
   end
-
-  def option_parser
-  end
-
 end
 
-parser = OptionParser.new
 @pb = Phonebook.new
 params = {}
 parser.on("-b") { params[:file] }
